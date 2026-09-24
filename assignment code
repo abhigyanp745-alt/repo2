@@ -1,0 +1,323 @@
+"""
+Machine Learning Assignments Project
+1. DecisionTree for Student Performance Prediction
+2. Linear Regression in Electronics Industry
+3. Unsupervised Learning (K-Means Clustering)
+"""
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn.linear_model import LinearRegression
+from sklearn.cluster import KMeans
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, silhouette_score
+from sklearn.datasets import make_blobs
+import warnings
+warnings.filterwarnings('ignore')
+
+# ============================================================================
+# ASSIGNMENT 1: DecisionTree for Student Performance Prediction
+# ============================================================================
+
+print("=" * 80)
+print("ASSIGNMENT 1: Decision Tree - Student Performance Prediction")
+print("=" * 80)
+
+# Create synthetic student performance dataset
+np.random.seed(42)
+n_students = 200
+
+study_hours = np.random.uniform(2, 12, n_students)
+previous_gpa = np.random.uniform(2.0, 4.0, n_students)
+attendance_percent = np.random.uniform(60, 100, n_students)
+assignment_completion = np.random.uniform(40, 100, n_students)
+
+# Generate performance labels based on features
+performance = []
+for hours, gpa, attend, assign in zip(study_hours, previous_gpa, attendance_percent, assignment_completion):
+    score = 0.3 * hours + 0.35 * gpa + 0.2 * (attend/20) + 0.15 * (assign/25)
+    performance.append(1 if score > 2.5 else 0)  # 1 = Pass, 0 = Fail
+
+# Create DataFrame
+student_data = pd.DataFrame({
+    'study_hours': study_hours,
+    'previous_gpa': previous_gpa,
+    'attendance_percent': attendance_percent,
+    'assignment_completion': assignment_completion,
+    'performance': performance
+})
+
+# Split data
+X = student_data.drop('performance', axis=1)
+y = student_data['performance']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train models with different max_depths
+max_depths = [3, 4, 5]
+results = {}
+
+print("\nTraining DecisionTree models with varying depths...\n")
+
+for depth in max_depths:
+    dt = DecisionTreeClassifier(max_depth=depth, random_state=42)
+    dt.fit(X_train, y_train)
+    
+    y_pred = dt.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    
+    results[depth] = {
+        'model': dt,
+        'accuracy': accuracy,
+        'y_pred': y_pred
+    }
+    
+    print(f"Max Depth = {depth}")
+    print(f"  Training Accuracy: {dt.score(X_train, y_train):.4f}")
+    print(f"  Testing Accuracy: {accuracy:.4f}")
+    print(f"  Correctly Classified: {(y_pred == y_test).sum()} / {len(y_test)}")
+    print()
+
+# Comparative Analysis
+print("COMPARATIVE ANALYSIS:")
+print("-" * 50)
+depths_list = list(results.keys())
+accuracies = [results[d]['accuracy'] for d in depths_list]
+
+print(f"Depth 3 → 4: Accuracy change = {results[4]['accuracy'] - results[3]['accuracy']:+.4f}")
+print(f"Depth 4 → 5: Accuracy change = {results[5]['accuracy'] - results[4]['accuracy']:+.4f}")
+print(f"\nBest performing depth: {max(results.items(), key=lambda x: x[1]['accuracy'])[0]}")
+print(f"Best accuracy: {max(accuracies):.4f}")
+
+# Visualize one of the trees
+fig, axes = plt.subplots(1, 3, figsize=(18, 10))
+for idx, depth in enumerate(max_depths):
+    plot_tree(results[depth]['model'], feature_names=X.columns, 
+              class_names=['Fail', 'Pass'], ax=axes[idx], filled=True)
+    axes[idx].set_title(f'Decision Tree (Max Depth = {depth})')
+plt.tight_layout()
+plt.savefig('/home/claude/decision_trees.png', dpi=150, bbox_inches='tight')
+print("\n✓ Decision trees visualization saved to 'decision_trees.png'")
+
+# ============================================================================
+# ASSIGNMENT 2: Linear Regression in Electronics Industry
+# ============================================================================
+
+print("\n" + "=" * 80)
+print("ASSIGNMENT 2: Linear Regression - Electronics Industry")
+print("=" * 80)
+
+# Create electronics manufacturing dataset
+# Features: production hours, equipment efficiency, raw material cost
+# Target: final product cost
+
+np.random.seed(42)
+n_products = 150
+
+production_hours = np.random.uniform(10, 100, n_products)
+equipment_efficiency = np.random.uniform(0.6, 1.0, n_products)
+raw_material_cost = np.random.uniform(50, 500, n_products)
+labor_cost_per_hour = np.random.uniform(15, 35, n_products)
+
+# Calculate final product cost with some noise
+final_cost = (
+    30 +  # Base cost
+    2.5 * production_hours +
+    200 * (1 - equipment_efficiency) +
+    0.8 * raw_material_cost +
+    1.2 * production_hours * labor_cost_per_hour +
+    np.random.normal(0, 50, n_products)  # Noise
+)
+
+electronics_data = pd.DataFrame({
+    'production_hours': production_hours,
+    'equipment_efficiency': equipment_efficiency,
+    'raw_material_cost': raw_material_cost,
+    'labor_cost_per_hour': labor_cost_per_hour,
+    'final_product_cost': final_cost
+})
+
+# Linear Regression Model
+X_elec = electronics_data.drop('final_product_cost', axis=1)
+y_elec = electronics_data['final_product_cost']
+
+X_train_elec, X_test_elec, y_train_elec, y_test_elec = train_test_split(
+    X_elec, y_elec, test_size=0.2, random_state=42
+)
+
+lr_model = LinearRegression()
+lr_model.fit(X_train_elec, y_train_elec)
+
+# Predictions and evaluation
+y_pred_elec = lr_model.predict(X_test_elec)
+mse = mean_squared_error(y_test_elec, y_pred_elec)
+rmse = np.sqrt(mse)
+r2 = r2_score(y_test_elec, y_pred_elec)
+
+print("\nLinear Regression Model Summary:")
+print("-" * 50)
+print(f"Model Coefficients:")
+for feature, coef in zip(X_elec.columns, lr_model.coef_):
+    print(f"  {feature}: {coef:.4f}")
+print(f"Intercept: {lr_model.intercept_:.4f}")
+
+print(f"\nModel Performance:")
+print(f"  R² Score: {r2:.4f}")
+print(f"  Mean Squared Error: {mse:.2f}")
+print(f"  Root Mean Squared Error: {rmse:.2f}")
+print(f"  Mean Absolute Error: {np.mean(np.abs(y_test_elec - y_pred_elec)):.2f}")
+
+# Visualization
+fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+
+# Plot 1: Predicted vs Actual
+axes[0, 0].scatter(y_test_elec, y_pred_elec, alpha=0.6)
+axes[0, 0].plot([y_test_elec.min(), y_test_elec.max()], 
+                [y_test_elec.min(), y_test_elec.max()], 'r--', lw=2)
+axes[0, 0].set_xlabel('Actual Cost')
+axes[0, 0].set_ylabel('Predicted Cost')
+axes[0, 0].set_title('Linear Regression: Predicted vs Actual')
+
+# Plot 2: Residuals
+residuals = y_test_elec - y_pred_elec
+axes[0, 1].scatter(y_pred_elec, residuals, alpha=0.6)
+axes[0, 1].axhline(y=0, color='r', linestyle='--')
+axes[0, 1].set_xlabel('Predicted Cost')
+axes[0, 1].set_ylabel('Residuals')
+axes[0, 1].set_title('Residual Plot')
+
+# Plot 3: Feature Importance (coefficients)
+coef_data = pd.Series(lr_model.coef_, index=X_elec.columns)
+coef_data.plot(kind='bar', ax=axes[1, 0])
+axes[1, 0].set_title('Feature Coefficients (Importance)')
+axes[1, 0].set_ylabel('Coefficient Value')
+
+# Plot 4: Actual vs Predicted distribution
+axes[1, 1].hist(y_test_elec, bins=15, alpha=0.5, label='Actual', color='blue')
+axes[1, 1].hist(y_pred_elec, bins=15, alpha=0.5, label='Predicted', color='red')
+axes[1, 1].set_xlabel('Product Cost')
+axes[1, 1].set_ylabel('Frequency')
+axes[1, 1].set_title('Distribution: Actual vs Predicted')
+axes[1, 1].legend()
+
+plt.tight_layout()
+plt.savefig('/home/claude/linear_regression.png', dpi=150, bbox_inches='tight')
+print("\n✓ Linear regression analysis saved to 'linear_regression.png'")
+
+# ============================================================================
+# ASSIGNMENT 3: Unsupervised Learning - K-Means Clustering
+# ============================================================================
+
+print("\n" + "=" * 80)
+print("ASSIGNMENT 3: Unsupervised Learning - K-Means Clustering")
+print("=" * 80)
+
+# Create satellite/spacecraft design dataset
+# Simulating characteristics of satellite designs
+np.random.seed(42)
+n_satellites = 300
+
+# Features: mass (kg), power consumption (W), communication bandwidth (Mbps)
+mass = np.random.uniform(100, 5000, n_satellites)
+power_consumption = np.random.uniform(500, 10000, n_satellites)
+bandwidth = np.random.uniform(100, 5000, n_satellites)
+
+satellite_data = np.column_stack([mass, power_consumption, bandwidth])
+
+# Normalize the data
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+satellite_data_normalized = scaler.fit_transform(satellite_data)
+
+# K-Means clustering with different K values
+print("\nK-Means Clustering Analysis:")
+print("-" * 50)
+
+inertias = []
+silhouette_scores = []
+k_values = range(2, 10)
+
+for k in k_values:
+    kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+    kmeans.fit(satellite_data_normalized)
+    
+    inertia = kmeans.inertia_
+    sil_score = silhouette_score(satellite_data_normalized, kmeans.labels_)
+    
+    inertias.append(inertia)
+    silhouette_scores.append(sil_score)
+    
+    print(f"K = {k}: Inertia = {inertia:.2f}, Silhouette Score = {sil_score:.4f}")
+
+# Optimal K using elbow method and silhouette score
+optimal_k = k_values[np.argmax(silhouette_scores)]
+print(f"\nOptimal K (by Silhouette Score): {optimal_k}")
+
+# Final model with optimal K
+final_kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
+clusters = final_kmeans.fit_predict(satellite_data_normalized)
+
+print(f"\nCluster Distribution:")
+unique, counts = np.unique(clusters, return_counts=True)
+for cluster_id, count in zip(unique, counts):
+    print(f"  Cluster {cluster_id}: {count} satellites")
+
+# Visualization
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+
+# Plot 1: Elbow curve
+axes[0, 0].plot(k_values, inertias, 'bo-', linewidth=2, markersize=8)
+axes[0, 0].set_xlabel('Number of Clusters (K)')
+axes[0, 0].set_ylabel('Inertia')
+axes[0, 0].set_title('Elbow Method')
+axes[0, 0].grid(True, alpha=0.3)
+
+# Plot 2: Silhouette scores
+axes[0, 1].plot(k_values, silhouette_scores, 'go-', linewidth=2, markersize=8)
+axes[0, 1].axvline(x=optimal_k, color='r', linestyle='--', label=f'Optimal K={optimal_k}')
+axes[0, 1].set_xlabel('Number of Clusters (K)')
+axes[0, 1].set_ylabel('Silhouette Score')
+axes[0, 1].set_title('Silhouette Analysis')
+axes[0, 1].legend()
+axes[0, 1].grid(True, alpha=0.3)
+
+# Plot 3: 3D scatter of clusters (first 3 features)
+from mpl_toolkits.mplot3d import Axes3D
+ax3d = fig.add_subplot(2, 2, 3, projection='3d')
+scatter = ax3d.scatter(satellite_data[:, 0], satellite_data[:, 1], 
+                       satellite_data[:, 2], c=clusters, cmap='viridis', s=50, alpha=0.6)
+ax3d.set_xlabel('Mass (kg)')
+ax3d.set_ylabel('Power (W)')
+ax3d.set_zlabel('Bandwidth (Mbps)')
+ax3d.set_title(f'K-Means Clusters (K={optimal_k})')
+plt.colorbar(scatter, ax=ax3d, label='Cluster')
+
+# Plot 4: Cluster sizes
+cluster_sizes = np.bincount(clusters)
+axes[1, 1].bar(range(optimal_k), cluster_sizes, color='skyblue', edgecolor='navy')
+axes[1, 1].set_xlabel('Cluster ID')
+axes[1, 1].set_ylabel('Number of Satellites')
+axes[1, 1].set_title(f'Cluster Size Distribution (K={optimal_k})')
+
+plt.tight_layout()
+plt.savefig('/home/claude/kmeans_clustering.png', dpi=150, bbox_inches='tight')
+print("\n✓ K-Means clustering analysis saved to 'kmeans_clustering.png'")
+
+# Cluster Characteristics
+print("\nCluster Characteristics:")
+print("-" * 50)
+for cluster_id in range(optimal_k):
+    mask = clusters == cluster_id
+    print(f"\nCluster {cluster_id}:")
+    print(f"  Avg Mass: {satellite_data[mask, 0].mean():.1f} kg")
+    print(f"  Avg Power: {satellite_data[mask, 1].mean():.1f} W")
+    print(f"  Avg Bandwidth: {satellite_data[mask, 2].mean():.1f} Mbps")
+
+print("\n" + "=" * 80)
+print("ALL ASSIGNMENTS COMPLETED SUCCESSFULLY!")
+print("=" * 80)
+print("\nGenerated Files:")
+print("  • decision_trees.png - Decision tree visualizations for depths 3, 4, 5")
+print("  • linear_regression.png - Linear regression analysis plots")
+print("  • kmeans_clustering.png - K-Means clustering analysis")
